@@ -1,3 +1,9 @@
+//
+//  Server.cpp
+//
+//  Created by Chris Marrin on 10/21/17.
+//
+//
 /*-------------------------------------------------------------------------
 This source file is a part of Etherclock3
 
@@ -33,30 +39,51 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 -------------------------------------------------------------------------*/
 
-#pragma once
+#include "Server.h"
 
-#include <m8r.h>
+#include <ESP8266WiFi.h>
+#include <DNSServer.h>
+#include <ESP8266WebServer.h>
+#include <WiFiManager.h>
 
-// Server
-//
-// Handle logging on Wifi and presenting a web server with options
+using namespace etherclock;
 
-class WiFiManager;
+etherclock::Server::Server()
+{
+	//Local intialization. Once its business is done, there is no need to keep it around
+	WiFiManager wifiManager;
 
-namespace etherclock {
+	//reset settings - for testing
+	//wifiManager.resetSettings();
 
-	class Server
-	{
-	public:
-		enum class Status { Connecting, Config, Connected, Failed };
-	
-		Server();
-	
-		Status status() const { return _status; }
-	
-	private:
-		static void configModeCallback (WiFiManager*);
-	
-		Status _status = Status::Connecting;	
-	};
+	//set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
+	wifiManager.setAPCallback(configModeCallback);
+
+	//fetches ssid and pass and tries to connect
+	//if it does not connect it starts an access point with the specified name
+	//here  "AutoConnectAP"
+	//and goes into a blocking loop awaiting configuration
+	if (!wifiManager.autoConnect()) {
+	    m8r::cout << "*** Failed to connect and hit timeout ***\n";
+		_status = Status::Failed;
+	}
+
+	//if you get here you have connected to the WiFi
+	m8r::cout << "connected\n";
+	_status = Status::Connected;
 }
+
+void etherclock::Server::configModeCallback(WiFiManager* myWiFiManager)
+{
+    m8r::cout << "Entered config mode\n";
+    m8r::cout << WiFi.softAPIP() << "\n";
+	
+    //if you used auto generated SSID, print it
+    m8r::cout << myWiFiManager->getConfigPortalSSID() << "\n";
+
+    //entered config mode, make led toggle faster
+    //tickResetCount = ConfigTicks;
+}
+
+
+
